@@ -9,33 +9,53 @@ import SignInAndSignUp from "./pages/sign-in-and-sign-up/sign-in-and-sign-up.com
 import { auth, createUserProfileDocument } from "./firebase/firebase.utils";
 
 class App extends React.Component {
-  constructor(){
+  constructor() {
     super();
 
     this.state = {
       currentUser: null
-    }
+    };
   }
 
   unsubscribeFromAuth = null;
 
   componentDidMount() {
-    this.unsubscribeFromAuth = auth.onAuthStateChanged(async user => {
-      createUserProfileDocument(user)
-      // this.setState({ currentUser: user });
-
-      // console.log(user);
-    })
+    /**
+     * onAuthStateChanged() is a method from auth library
+     * this is an open subscription, it will listen for any change on the user state
+     */
+    this.unsubscribeFromAuth = auth.onAuthStateChanged(async userAuth => {
+      if (userAuth) {
+        const userRef = await createUserProfileDocument(userAuth);
+        /**
+         * the moment code runs, userRef will send back a snapShot representing the user data
+         * currently stored in the database
+         */
+        userRef.onSnapshot(snapShot => {
+          this.setState({
+            currentUser: { 
+              id: snapShot.id,
+              ...snapShot.data()
+            }
+          });
+        });
+      } else {
+        this.setState({ currentUser: userAuth });
+      }
+    });
   }
 
+  /**
+   * we close the open subscription whenever we are unmounting the app to restrict memory leaks in our application
+   */
   componentWillUnmount() {
     this.unsubscribeFromAuth();
   }
-  
-  render(){
+
+  render() {
     return (
       <div>
-        <Header currentUser={this.state.currentUser}/>
+        <Header currentUser={this.state.currentUser} />
         <Switch>
           <Route exact path="/" component={HomePage} />
           <Route exact path="/shop" component={ShopPage} />
